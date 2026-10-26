@@ -45,6 +45,23 @@ for arg in "\$@"; do
   esac
 done
 
+# The pthread functions are provided by nolibc. Make -pthread mean what it
+# means on hosted targets, which a bare-metal Clang driver (as used on macOS)
+# does not do, and drop -lpthread, as there is no such library.
+for arg in "\$@"; do
+  shift
+  case "\$arg" in
+    -pthread)
+      set -- "\$@" -D_REENTRANT
+      ;;
+    -lpthread)
+      ;;
+    *)
+      set -- "\$@" "\$arg"
+      ;;
+  esac
+done
+
 set -- \\
   $CFLAGS \\
   -include _solo5/overrides.h \\
