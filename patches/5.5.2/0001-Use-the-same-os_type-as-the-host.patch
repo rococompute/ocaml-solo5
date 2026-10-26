@@ -1,0 +1,30 @@
+From 1271f2a6a55483e9a0825a6f79f384b710444510 Mon Sep 17 00:00:00 2001
+From: Calascibetta Romain <romain.calascibetta@gmail.com>
+Date: Sat, 20 Jun 2026 13:04:38 +0200
+Subject: [PATCH] Use the same os_type as the host
+
+Regenerated against OCaml 5.5.2, whose configure differs in line numbers
+from earlier 5.5.x releases; opatch does not apply hunks at an offset.
+---
+--- a/configure
++++ b/configure
+@@ -16507,7 +16507,7 @@
+   gcc-*,powerpc-*-linux*) :
+     oc_ldflags="-mbss-plt" ;; #(
+   *,*-*-none|*,*-*-elf*) :
+-    ostype="None" ;; #(
++    ostype="$(ocamlc -config-var os_type)" ;; #(
+   *) :
+      ;;
+ esac
+--- a/configure.ac
++++ b/configure.ac
+@@ -1354,7 +1354,7 @@
+   [gcc-*,powerpc-*-linux*],
+     [oc_ldflags="-mbss-plt"],
+   [*,*-*-none|*,*-*-elf*],
+-    [ostype="None"])
++    [ostype="$(ocamlc -config-var os_type)"])
+ 
+ # How to build sak
+ 

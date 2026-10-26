@@ -14,6 +14,22 @@ _build:
 
 LIBS := openlibm/libopenlibm.a nolibc/libnolibc.a
 
+# On hosts without target binutils (macOS), configure.sh picks LLVM's
+ifneq ($(MAKECONF_AR),)
+LIB_AR := "AR=$(MAKECONF_AR)"
+endif
+
+# On hosts without a libgcc for the target (macOS), configure.sh finds one,
+# which is copied next to the other libraries and installed with them
+ifneq ($(MAKECONF_LIBGCC),)
+LIBGCC := _build/libgcc/libgcc.a
+LIBS += $(LIBGCC)
+
+$(LIBGCC): $(MAKECONF_LIBGCC)
+	mkdir -p $(dir $@)
+	cp $< $@
+endif
+
 # CFLAGS used to build the nolibc and openlibm libraries
 LIB_CFLAGS=-I$(TOP)/nolibc/include -include _solo5/overrides.h
 
@@ -26,7 +42,7 @@ nolibc/libnolibc.a: phony-nolibc
 
 .PHONY: phony-nolibc
 phony-nolibc:
-	$(MAKE) -C nolibc libnolibc.a \
+	$(MAKE) -C nolibc libnolibc.a $(LIB_AR) \
 	    "CC=$(MAKECONF_TOOLCHAIN)-cc" \
 	    "FREESTANDING_CFLAGS=$(NOLIBC_CFLAGS)"
 
@@ -36,7 +52,7 @@ openlibm/libopenlibm.a: phony-openlibm
 
 .PHONY: phony-openlibm
 phony-openlibm:
-	$(MAKE) -C openlibm libopenlibm.a \
+	$(MAKE) -C openlibm libopenlibm.a $(LIB_AR) \
 	     "CC=$(MAKECONF_TOOLCHAIN)-cc" \
 	     "CPPFLAGS=$(LIB_CFLAGS)"
 
@@ -59,6 +75,9 @@ TOOLCHAIN_FINAL := $(addprefix $(TOOLDIR_FINAL)/,$(ALLTOOLS))
 TOOLCHAIN_BUILD_CFLAGS := -I$(TOP)/nolibc/include \
   -I$(TOP)/openlibm/include -I$(TOP)/openlibm/src
 TOOLCHAIN_BUILD_LDFLAGS := -L$(TOP)/nolibc -L$(TOP)/openlibm
+ifneq ($(MAKECONF_LIBGCC),)
+TOOLCHAIN_BUILD_LDFLAGS += -L$(TOP)/_build/libgcc
+endif
 
 # Options for the installed version of the tools
 TOOLCHAIN_FINAL_CFLAGS := -I$(MAKECONF_SYSROOT)/include
@@ -98,8 +117,11 @@ ocaml:
 # create an ocaml-src subdirectory
 	test ! -d $@
 	cp -r "$$(ocamlfind query ocaml-src)" $@
+	FULL="$$(head -n1 ocaml/VERSION | cut -d '.' -f 1-3 | cut -d '~' -f 1)" ; \
 	VERSION="$$(head -n1 ocaml/VERSION | cut -d '.' -f 1-2)" ; \
-	if test -d "patches/$$VERSION" ; then \
+	if test -d "patches/$$FULL" ; then \
+	  opatch -v -C $@ "patches/$$FULL"/*; \
+	elif test -d "patches/$$VERSION" ; then \
 	  opatch -v -C $@ "patches/$$VERSION"/*; \
 	fi
 
