@@ -75,7 +75,6 @@ MAKECONF_SYSROOT="${MAKECONF_SYSROOT:-$MAKECONF_PREFIX/lib/ocaml-solo5}"
 
 TARGET_TRIPLET="$("$CONFIG_TARGET-cc" -dumpmachine)"
 
-MAKECONF_TOOLPREFIX="${MAKECONF_TOOLPREFIX:-$TARGET_TRIPLET-}"
 
 case "${TARGET_TRIPLET}" in
     amd64-*|x86_64-*)
@@ -89,7 +88,58 @@ case "${TARGET_TRIPLET}" in
         ;;
 esac
 
+#
+# macOS hosts have no ELF binutils and no libgcc for the target. Use LLVM's
+# binutils (Homebrew's llvm is keg-only, so look in its prefix too) and take
+# libgcc.a from a bare-metal GCC (e.g. Homebrew's aarch64-elf-gcc), which is
+# copied into the sysroot so that the installed toolchain does not depend on
+# where it came from.
+#
+MAKECONF_AR=
+MAKECONF_LIBGCC=
+if [ "$(uname -s)" = "Darwin" ]; then
+    find_tool()
+    {
+        if command -v "$1" >/dev/null 2>&1; then
+            command -v "$1"
+            return 0
+        fi
+        for _dir in /opt/homebrew/opt/llvm/bin /opt/homebrew/bin \
+            /usr/local/opt/llvm/bin /usr/local/bin /opt/local/bin; do
+            if [ -x "${_dir}/$1" ]; then
+                echo "${_dir}/$1"
+                return 0
+            fi
+        done
+        return 1
+    }
+    if [ -z "${MAKECONF_TOOLPREFIX}" ]; then
+        LLVM_AR="$(find_tool llvm-ar)" || \
+            die "llvm-ar not found: run 'brew install llvm'"
+        MAKECONF_TOOLPREFIX="${LLVM_AR%ar}"
+    fi
+    MAKECONF_AR="${MAKECONF_TOOLPREFIX}ar"
+    # The cross build compiles some tools with the host ocamlopt, passing
+    # the target's -function-sections; a macOS (Mach-O) ocamlopt rejects it.
+    OCAML_CONFIGURE_OPTIONS="${OCAML_CONFIGURE_OPTIONS} --disable-function-sections"
+    if [ "${TARGET_ARCH}" = "aarch64" ]; then
+        if [ -z "${LIBGCC}" ]; then
+            ELF_GCC="$(find_tool aarch64-elf-gcc)" || \
+                die "aarch64-elf-gcc not found. libgcc.a for aarch64 is" \
+                    "required: run 'brew install aarch64-elf-gcc', or set" \
+                    "LIBGCC to the path of a libgcc.a for aarch64."
+            LIBGCC="$("${ELF_GCC}" -print-libgcc-file-name)"
+        fi
+        [ -f "${LIBGCC}" ] || die "libgcc.a not found at '${LIBGCC}'"
+        MAKECONF_LIBGCC="${LIBGCC}"
+    fi
+fi
+
+MAKECONF_TOOLPREFIX="${MAKECONF_TOOLPREFIX:-$TARGET_TRIPLET-}"
+
 cat <<EOM >Makeconf
+MAKECONF_AR=${MAKECONF_AR}
+MAKECONF_LIBGCC=${MAKECONF_LIBGCC}
 MAKECONF_PREFIX=${MAKECONF_PREFIX}
 MAKECONF_SYSROOT=${MAKECONF_SYSROOT}
 MAKECONF_TOOLCHAIN=${CONFIG_TARGET}

@@ -44,7 +44,13 @@ available: [
   ((os = "linux" & (arch = "x86_64" | arch = "arm64"))
   | (os = "freebsd" & arch = "x86_64")
   | (os = "openbsd" & arch = "x86_64")
-  | (os = "dragonfly" & arch = "x86_64"))
+  | (os = "dragonfly" & arch = "x86_64")
+  | (os = "macos" & arch = "arm64"))
+]
+depexts: [
+  # macOS has no ELF binutils and no libgcc for the target: LLVM provides
+  # the former, and libgcc.a comes from a bare-metal GCC.
+  ["llvm" "aarch64-elf-gcc"] {os = "macos" & os-distribution = "homebrew"}
 ]
 x-maintenance-intent: [ "(latest)" ]
 synopsis: "OCaml cross-compiler to the freestanding Solo5 backend"
