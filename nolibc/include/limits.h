@@ -16,9 +16,21 @@
 #define LONG_MIN (-LONG_MAX-1)
 #define LLONG_MIN (-LLONG_MAX-1)
 #define ULONG_MAX (2UL*LONG_MAX+1)
+#define ULLONG_MAX (2ULL*LLONG_MAX+1)
 #define NL_ARGMAX 9
 #define UCHAR_MAX 255
 #define CHAR_BIT 8
+#define SCHAR_MAX 127
+#define SCHAR_MIN (-SCHAR_MAX-1)
+#ifdef __CHAR_UNSIGNED__
+#define CHAR_MIN 0
+#define CHAR_MAX UCHAR_MAX
+#else
+#define CHAR_MIN SCHAR_MIN
+#define CHAR_MAX SCHAR_MAX
+#endif
+/* nolibc supports the single-byte C locale. */
+#define MB_LEN_MAX 1
 #define PATH_MAX 1024
 
 #endif

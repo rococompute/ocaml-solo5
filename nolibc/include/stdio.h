@@ -3,6 +3,7 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <_solo5/seek.h>
 
 struct _FILE;
 typedef struct _FILE {

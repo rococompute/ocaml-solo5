@@ -13,6 +13,7 @@ walk_tree() {
   # walk_tree <srcprefix> <destprefix> [extension]
   # where *prefix are not empty
   for f in "$1"/*"$3"; do
+    [ -e "$f" ] || continue
     base="${f##*/}"
     if [ -d "$f" ]; then
       walk_tree "$f" "$2/$base" "$3"

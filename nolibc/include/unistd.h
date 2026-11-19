@@ -23,6 +23,6 @@ int execvp(const char *, char *const []);
 
 #define _SC_PAGESIZE 1
 #define _SC_PAGE_SIZE _SC_PAGESIZE
-#define SEEK_END 2
+#include <_solo5/seek.h>
 
 #endif
